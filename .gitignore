@@ -1,0 +1,24 @@
+# Experiments and generated files
+scratch/
+output/
+data/
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Editable-install metadata
+build/
+dist/
+
+# Environments
+.venv/
+venv/
+
+# Editor and OS files
+.vscode/
+.idea/
+Thumbs.db

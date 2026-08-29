@@ -1,0 +1,12 @@
+modes(a,c,f_max) -> [(f,m,n,j)] 
+Returns list of tuples sorted by frequency. Remember to normalize by np.abs(y).max() 
+
+strike(modes, ...) -> ndarray
+One drum hit, in_i is the mode shape at strike point, out_i is mode shape at listening point, roll_i is the finite stick's width, norm_i is the ∫∫Φ²dA that makes relative amplitudes correct.
+eps_m is the angular integral.
+
+write(path, y, sr) -> "path.wav"
+takes strike and sample rate as input
+
+air_load(modes, strength) -> [(f,m,n,j)]
+Adjusts modes to measured modes of a 28" timpani 
