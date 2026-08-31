@@ -26,19 +26,23 @@ def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=np.pi/2, T_0 = 3530
 		for i,z in enumerate(zeros):
 			out.append((f[i],m,i+1,zeros[i]))
 		'''
+		n_zeros = int(2*a*f_max/c) + 8
 		zeros = special.jn_zeros(m,64)
 		f = c * zeros / (2 * np.pi *a)
 		g = f < f_max
 		if not g.any():
 			break
 		zeros = zeros[:g.sum()]
+
+		if m == 0: eps = 2.0  
+		else: eps = 1.0
+
 		for i,z in enumerate(zeros):
-			j = zeros[i]
+			j = z
 			k = j/a 
-			modeIn = special.jv(m, j*r_strike)
-			modeOut = special.jv(m, j*r_pickup) * np.cos(theta*m)
-			if m == 0: eps = 2.0 
-			else: eps = 1.0
+			modeIn = special.jv(m, j*r_strike) 
+			modeOut = special.jv(m, j*r_pickup) * np.cos(theta*m) # Pick theta = 0 for strike point
+		
 			norm = eps * (np.pi * (a ** 2)/2 ) * special.jv(m+1, j) ** 2
 			out.append((k,f[i],modeIn,modeOut,norm))
 		m += 1
@@ -77,7 +81,7 @@ def rect_modes(Lx=0.356012, Ly=0.237341, f_max=5000,
 	return out, props
 
 def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=2.0, sigma_b=3.723e-5, 
-	P=1.73e-2, E = 4.0e9, normalize = True): #want to remove all 
+	P=1.73e-2, E = 4.895e9, normalize = True): #want to remove all 
 	#  sigma_a/_b are damping elements, E is young's modulus
 	# sigma_mu is areal density and P is strike impulse
 	n = int(dur * sr)
