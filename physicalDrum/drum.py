@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 sr = 48000
 
 #Circular surface, bessel function
-def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=np.pi/2, T_0 = 3530.6, rho = 1390, h = 2.54e-4):
+def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=np.pi/2, T_0 = 3530.6, rho = 1390, E = 4.895e9, h = 2.54e-4):
 	#c is the transverse wave speed on the membrane, 100m/s on 10-mil mylar
 	#theta is difference between strike and pickup point
 	# h is thickness in meters, T_0 is tuned tension, rho is mass density of the head material, tuned to mylar tom
@@ -47,7 +47,7 @@ def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=np.pi/2, T_0 = 3530
 			out.append((k,f[i],modeIn,modeOut,norm))
 		m += 1
 	out.sort(key=lambda r: r[1])
-	props = {'A_area': np.pi *a ** 2, 'T_0': T_0, 'sigma_mu': rho*h, 'c':c, 'h':h}
+	props = {'A_area': np.pi *a ** 2, 'T_0': T_0, 'sigma_mu': rho*h, 'c':c, 'h':h, 'E':E, 'Eh': E*h}
 	#print(c)
 	#print(out[0][1])
 	return out, props
@@ -56,7 +56,7 @@ def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=np.pi/2, T_0 = 3530
 #Rectangular surface, sin and cos
 def rect_modes(Lx=0.356012, Ly=0.237341, f_max=5000,
                x_strike=0.618, y_strike=0.382, x_pickup=0.276, y_pickup=0.723,
-               T_0=3530.6, rho=1390, h=2.54e-4):
+               T_0=3530.6, rho=1390,  E = 4.895e9, h=2.54e-4):
 	c = np.sqrt(T_0/(rho*h))
 	out = []
 	m = 1  
@@ -77,12 +77,12 @@ def rect_modes(Lx=0.356012, Ly=0.237341, f_max=5000,
 		if not any_this_m: break
 		m += 1
 	out.sort(key=lambda r: r[1])
-	props = {'A_area': Lx*Ly, 'T_0': T_0, 'sigma_mu': rho*h, 'c': c, 'h': h}
+	props = {'A_area': Lx*Ly, 'T_0': T_0, 'sigma_mu': rho*h, 'c': c, 'h': h, 'E':E, 'Eh':E*h}
 	return out, props
 
 def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=2.0, sigma_b=3.723e-5, 
-	P=1.73e-2, E = 4.895e9, normalize = True): #want to remove all 
-	#  sigma_a/_b are damping elements, E is young's modulus
+	P=1.73e-2, t_fast=0.001, L_fast=4, L_slow=8, gamma_max = 2.0, normalize = True): 
+	#  sigma_a/_b are damping elements
 	# sigma_mu is areal density and P is strike impulse
 	n = int(dur * sr)
 	y= np.zeros(n)  
@@ -100,23 +100,37 @@ def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=
 	# T_0 = sigma * c**2
 	# c = np.sqrt(T_0 / sigma_mu) check to verify c matches c in modes 
 	#A_area = np.pi * a **2 
-	Eh = E*props['h']
+	Eh = props['Eh']
 
 	beta = Eh / (2*props['A_area']*props['T_0'])
-	kern = k**2 * norm # The S-kernal
+	kern = k**2 * norm # The S-kernel
 	S_tr = np.zeros(n) # Trace
+	#S_tr[0],S_tr[1] = 1,1
 	gamma_c = np.ones(n) # computed gamma, gamma is the frequency multiplier
 	gamma_a = np.ones(n) # applied gamma
 	g = 1.0 # the currently applied scalar
-	n_fast = int(0.001*sr) 
-	L_fast = 4 # rebuild coefficients every 4 samples while i < n_fast
-	L_slow = 8 # every 8 samples after that
+	n_fast = int(t_fast*sr) 
+	# L_fast = 4 # rebuild coefficients every 4 samples while i < n_fast
+	# L_slow = 8 # >= 16 goes unstable at hard hits. NOT the coefficient swap --
+            	 # replaying a fixed gamma schedule open-loop is stable at every L.
+             	 # It is the gamma feedback loop: gamma is held stale for up to L
+             	 # samples, and delayed negative feedback becomes positive.
+             	 # Loop gain ~ beta*S ~ P^2, so the critical L falls with strike
+             	 # strength: P=2.6e-2 fails at 24, 3.46e-2 at 12, 5.0e-2 at 8.
 
+             	 # L | ga_max | s_max
+				 # 1 1.3153097798047895 1.0
+				 # 4 1.3153097798047895 1.0
+				 # 8 1.3153097798047895 1.0
+				 # 16 2.0 1.0
+				 # 32 2.0 1.0
 	q_prev = np.zeros_like(A)
 	q_curr = A * np.exp(-sig * dt) * np.sin(omega_d * dt)
-
+	S_tr[0] = 0.0                                        # q = 0 at t = 0
+	S_tr[1] = kern @ (q_curr**2)                         
+	gamma_c[1] = min(np.sqrt(1 + beta*S_tr[1]), gamma_max)
 	y[0] = 0
-	y[1] = q_curr @ modeOut
+	y[1] = modeOut @ q_curr
 	# Damped modal equation: q'' + 2*sig*q' + omega**2 * q = 0
 	# with q = exp(s*t) and dividing by exp(s*t)
 	# s**2 + 2*sig*s + omega**2 = 0
@@ -156,7 +170,10 @@ def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=
 		#   omega_i(t) = gamma(t) * omega_i           ONE factor, every mode
 		S_tr[i] = kern @ (q_curr**2) # Since modes are eigenfunctions
 		# sqrt(1 + beta*S) clamped to 2.0 for numerical reasons
-		gamma_c[i] = min(np.sqrt(1 + beta* S_tr[i]), 2.0)
+		# gamma_c[i] = min(np.sqrt(1 + beta* S_tr[i]), 2.0)
+		if not np.isfinite(S_tr[i]):
+		    raise FloatingPointError(f"S diverged at sample {i} (t = {i/sr:.4f} s)")
+		gamma_c[i] = min(np.sqrt(1 + beta*S_tr[i]), gamma_max)
 		if i < n_fast:
 			L = L_fast # Fast head
 		else:
@@ -168,7 +185,8 @@ def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=
 			a2 = np.exp(-2 * sig * dt)
 		gamma_a[i] = g
 
-	return (y/np.abs(y).max() if normalize else y), S_tr, gamma_c, gamma_a
+	pk = np.abs(y).max()
+	return (y/pk if (normalize and pk > 0) else y), S_tr, gamma_c, gamma_a
 
 def write(path, y, sr):
     wavfile.write(path, int(sr), (np.clip(y, -1, 1) * 32000).astype(np.int16))

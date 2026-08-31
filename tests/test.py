@@ -40,9 +40,15 @@ sr =48000
 # y_h, *_ = drum.sequential_strike(table, props, P=3.46e-2, normalize=False)
 # peak = np.abs(y_h).max()
 # # drum.write('modes_c_soft.wav', 0.95*y_s/peak, sr)
+<<<<<<< HEAD
 # drum.write('modes_c_hard.wav', 0.95*y_h/peak, sr)
 
 # print("soft_strike and hard_strike wav files generated")
+=======
+# # drum.write('modes_c_hard.wav', 0.95*y_h/peak, sr)
+
+# # print("soft_strike and hard_strike wav files generated")
+>>>>>>> experiment
 # drum.write(run / "soft.wav", 0.95 * y_s / peak, sr)
 # drum.write(run / "hard.wav", 0.95 * y_h / peak, sr)
 
@@ -52,4 +58,12 @@ sr =48000
 
 for L in [1, 4, 8, 16, 32]:
     y, S, gc, ga = drum.sequential_strike(table, props, P=3.46e-2, L_slow=L)
+<<<<<<< HEAD
     print(L, ga.max(), S.max())
+=======
+    print(L, ga.max(), S.max())
+
+t, p = drum.modes()
+y, S, gc, ga = drum.sequential_strike(t, p, dur=0.3, P=1.73e-2, normalize=False)
+print(S[0], S[1], S.max(), ga.max())
+>>>>>>> experiment
