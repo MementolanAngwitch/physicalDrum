@@ -1,5 +1,6 @@
 from physicalDrum.paths import OUTPUT, ensure_dirs
 import physicalDrum.drum as drum 
+#import physicalDrum.experimental as drum
 import matplotlib.pyplot as plt 
 from datetime import datetime
 import numpy as np
@@ -39,9 +40,15 @@ sr =48000
 # y_h, *_ = drum.sequential_strike(table, props, P=3.46e-2, normalize=False)
 # peak = np.abs(y_h).max()
 # # drum.write('modes_c_soft.wav', 0.95*y_s/peak, sr)
+<<<<<<< HEAD
+# drum.write('modes_c_hard.wav', 0.95*y_h/peak, sr)
+
+# print("soft_strike and hard_strike wav files generated")
+=======
 # # drum.write('modes_c_hard.wav', 0.95*y_h/peak, sr)
 
 # # print("soft_strike and hard_strike wav files generated")
+>>>>>>> experiment
 # drum.write(run / "soft.wav", 0.95 * y_s / peak, sr)
 # drum.write(run / "hard.wav", 0.95 * y_h / peak, sr)
 
@@ -51,6 +58,7 @@ sr =48000
 
 for L in [1, 4, 8, 16, 32]:
     y, S, gc, ga = drum.sequential_strike(table, props, P=3.46e-2, L_slow=L)
+    print(L, ga.max(), S.max())
     print(L, ga.max(), S.max())
 
 t, p = drum.modes()
