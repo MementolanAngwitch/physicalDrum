@@ -1,3 +1,10 @@
+"""
+Physics-based drum synthesis.
+
+modes()            builds the drum:  geometry + material -> mode table + props
+sequential_strike() excites it:      impulse P through a stick of radius w
+"""
+
 from scipy import special
 import numpy as np 
 from scipy.io import wavfile
@@ -6,11 +13,13 @@ import matplotlib.pyplot as plt
 sr = 48000
 
 #Circular surface, bessel function
-def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=np.pi/2, T_0 = 3530.6, rho = 1390, E = 4.895e9, h = 2.54e-4):
-	#c is the transverse wave speed on the membrane, 100m/s on 10-mil mylar
-	#theta is difference between strike and pickup point
-	# h is thickness in meters, T_0 is tuned tension, rho is mass density of the head material, tuned to mylar tom
-	#Returns a list of (k,f,in,out,norm), (wavenumber, freq, mode shape at strike, mode at pickup, squared length of mode shape)
+def modes(a=0.164,f_max=5000,r_strike=0.4,r_pickup=0.6,theta=2.0, T_0 = 3530.6, rho = 1390, E = 4.895e9, h = 2.54e-4):
+	"""
+	c is the transverse wave speed on the membrane, 100m/s on 10-mil mylar
+	theta is difference between strike and pickup point
+	h is thickness in meters, T_0 is tuned tension, rho is mass density of the head material, tuned to mylar tom
+	Returns a list of (k,f,in,out,norm), (wavenumber, freq, mode shape at strike, mode at pickup, squared length of mode shape)
+	"""
 	m = 0
 	out = []
 	c = np.sqrt(T_0/(rho*h))
@@ -82,9 +91,26 @@ def rect_modes(Lx=0.356012, Ly=0.237341, f_max=5000,
 
 def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=2.0, sigma_b=3.723e-5, 
 	P=1.73e-2, t_fast=0.001, L_fast=4, L_slow=8, gamma_max = 2.0, normalize = True): 
-	#  sigma_a/_b are damping elements
-	# sigma_mu is areal density and P is strike impulse
+	"""
+	table : list of (k, f, modeIn, modeOut, norm), ascending in f
+	        k       wavenumber, 1/m          (geometry; NOT 2*pi*f/c once stiffness exists)
+	        f       frequency, Hz            (dispersion relation, already evaluated)
+	        modeIn  Phi_i at the strike      (dimensionless)
+	        modeOut Phi_i at the pickup      (dimensionless)
+	        norm    INT INT Phi_i^2 dA, m^2  (basis is orthogonal, NOT orthonormal)
+	props : A_area    m^2      membrane area
+	        T_0       N/m      static tension
+	        sigma_mu  kg/m^2   areal density
+	        sigma_a/b kg/m^2 damping elements
+	        Eh        N/m      Young's modulus times thickness
+	        h         m        thickness
+	        c         m/s      sqrt(T_0/sigma_mu), for consistency checks only
+	"""
+
 	n = int(dur * sr)
+	if n < 3:
+		raise ValueError(f"dur*sr = {n} samples; need at least 3")
+
 	y= np.zeros(n)  
 	k, f, modeIn, modeOut, norm = np.array(table).T 
 
@@ -119,11 +145,11 @@ def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=
              	 # strength: P=2.6e-2 fails at 24, 3.46e-2 at 12, 5.0e-2 at 8.
 
              	 # L | ga_max | s_max
-				 # 1 1.3153097798047895 1.0
-				 # 4 1.3153097798047895 1.0
-				 # 8 1.3153097798047895 1.0
-				 # 16 2.0 1.0
-				 # 32 2.0 1.0
+				 # 1 1.3153097798047895 0.00039791602328389245
+				 # 4 1.3153097798047895 0.00039791602328389245
+				 # 8 1.3153097798047895 0.00039791602328389245
+				 # 16 2.0 0.8246817384641063
+				 # 32 2.0 0.18224934385952216
 	q_prev = np.zeros_like(A)
 	q_curr = A * np.exp(-sig * dt) * np.sin(omega_d * dt)
 	S_tr[0] = 0.0                                        # q = 0 at t = 0
@@ -189,4 +215,5 @@ def sequential_strike(table, props, dur = 2.0 , sr= 48000, w = 0.00984, sigma_a=
 	return (y/pk if (normalize and pk > 0) else y), S_tr, gamma_c, gamma_a
 
 def write(path, y, sr):
-    wavfile.write(path, int(sr), (np.clip(y, -1, 1) * 32000).astype(np.int16))
+	"""y must be float in +-1; this function does the int16 scaling."""
+	wavfile.write(path, int(sr), (np.clip(y, -1, 1) * 32000).astype(np.int16)) # y must be float in +-1. This function does the int16 scaling.
