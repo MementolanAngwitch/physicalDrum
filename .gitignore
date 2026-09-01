@@ -3,6 +3,7 @@ scratch/
 output/
 data/
 checklist.md
+
 # Python bytecode and caches
 __pycache__/
 *.pyc
